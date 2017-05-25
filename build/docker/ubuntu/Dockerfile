@@ -39,7 +39,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       clang \
       cmake \
-      debhelper \
+      debhelper devscripts \
       flex \
       ninja-build \
       pkg-config \
@@ -174,7 +174,7 @@ ENV PATH /usr/local/go/bin:$PATH
 
 # Haxe
 RUN mkdir -p /usr/lib/haxe && \
-    curl http://haxe.org/website-content/downloads/3.2.0/downloads/haxe-3.2.0-linux64.tar.gz | \
+    wget -O - https://github.com/HaxeFoundation/haxe/releases/download/3.2.1/haxe-3.2.1-linux64.tar.gz | \
     tar -C /usr/lib/haxe --strip-components=1 -xz && \
     ln -s /usr/lib/haxe/haxe /usr/bin/haxe && \
     ln -s /usr/lib/haxe/haxelib /usr/bin/haxelib && \
@@ -184,7 +184,7 @@ RUN mkdir -p /usr/lib/haxe && \
     haxelib install hxcpp
 
 # Node.js
-RUN curl -sSL https://www.npmjs.com/install.sh | sh
+RUN curl -sSL https://www.npmjs.com/install.sh | npm_install=4.2.0 sh
 
 # D
 RUN curl -sSL http://downloads.dlang.org/releases/2.x/2.070.0/dmd_2.070.0-0_amd64.deb -o /tmp/dmd_2.070.0-0_amd64.deb && \
