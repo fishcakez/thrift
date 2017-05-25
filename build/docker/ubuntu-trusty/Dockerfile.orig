@@ -45,7 +45,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
       build-essential \
       clang \
       cmake \
-      debhelper \
+      debhelper devscripts \
       flex \
       ninja-build \
       pkg-config \
@@ -192,8 +192,7 @@ RUN mkdir -p /usr/lib/haxe && \
     haxelib install --always hxcpp 3.4.64
 
 # Node.js
-# temporarily removed since this breaks the build (and is not needed to test C# code)
-# RUN curl -sSL https://www.npmjs.com/install.sh | sh
+RUN curl -sSL https://www.npmjs.com/install.sh | npm_install=4.2.0 sh
 
 # D
 RUN curl -sSL http://downloads.dlang.org/releases/2.x/2.070.0/dmd_2.070.0-0_amd64.deb -o /tmp/dmd_2.070.0-0_amd64.deb && \
