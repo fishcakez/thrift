@@ -44,6 +44,7 @@
 #define INT_CONV_ERROR_OCCURRED(v) (((v) == -1) && PyErr_Occurred())
 
 extern "C" {
+extern PyObject* INTERN_STRING(TFrozenBase);
 extern PyObject* INTERN_STRING(TFrozenDict);
 extern PyObject* INTERN_STRING(cstringio_buf);
 extern PyObject* INTERN_STRING(cstringio_refill);
@@ -54,6 +55,7 @@ namespace thrift {
 namespace py {
 
 extern PyObject* ThriftModule;
+extern PyObject* TBaseModule;
 
 // Stolen out of TProtocol.h.
 // It would be a huge pain to have both get this from one place.

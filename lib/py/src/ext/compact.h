@@ -82,11 +82,11 @@ public:
     return true;
   }
 
-  bool writeStructBegin() {
+  bool writeStructBegin(bool immutable) {
     writeTags_.push(0);
     return true;
   }
-  bool writeStructEnd() {
+  bool writeStructEnd(bool immutable) {
     writeTags_.pop();
     return true;
   }
@@ -219,11 +219,13 @@ public:
     return len;
   }
 
-  bool readStructBegin() {
+  bool readStructBegin(bool immutable) {
+    immutabilityStack_.push(immutable);
     readTags_.push(0);
     return true;
   }
-  bool readStructEnd() {
+  bool readStructEnd(bool immutable) {
+    immutabilityStack_.pop();
     readTags_.pop();
     return true;
   }

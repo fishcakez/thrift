@@ -50,6 +50,7 @@ class TProtocolBase(object):
         self.trans = trans
         self._fast_decode = None
         self._fast_encode = None
+        self._immutability_stack = []
 
     @staticmethod
     def _check_length(limit, length):
@@ -277,11 +278,15 @@ class TProtocolBase(object):
         while True:
             yield read()
 
+    def _in_immutable_context(self):
+        return self._immutability_stack and self._immutability_stack[-1]
+
     def readFieldByTType(self, ttype, spec):
         return next(self._read_by_ttype(ttype, spec, spec))
 
     def readContainerList(self, spec):
         ttype, tspec, is_immutable = spec
+        is_immutable = is_immutable or self._in_immutable_context()
         (list_type, list_len) = self.readListBegin()
         # TODO: compare types we just decoded with thrift_spec
         elems = islice(self._read_by_ttype(ttype, spec, tspec), list_len)
@@ -291,6 +296,7 @@ class TProtocolBase(object):
 
     def readContainerSet(self, spec):
         ttype, tspec, is_immutable = spec
+        is_immutable = is_immutable or self._in_immutable_context()
         (set_type, set_len) = self.readSetBegin()
         # TODO: compare types we just decoded with thrift_spec
         elems = islice(self._read_by_ttype(ttype, spec, tspec), set_len)
@@ -306,6 +312,7 @@ class TProtocolBase(object):
 
     def readContainerMap(self, spec):
         ktype, kspec, vtype, vspec, is_immutable = spec
+        is_immutable = is_immutable or self._in_immutable_context()
         (map_ktype, map_vtype, map_len) = self.readMapBegin()
         # TODO: compare types we just decoded with thrift_spec and
         # abort/skip if types disagree
@@ -319,6 +326,7 @@ class TProtocolBase(object):
     def readStruct(self, obj, thrift_spec, is_immutable=False):
         if is_immutable:
             fields = {}
+        self._immutability_stack.append(is_immutable)
         self.readStructBegin()
         while True:
             (fname, ftype, fid) = self.readFieldBegin()
@@ -341,6 +349,7 @@ class TProtocolBase(object):
                     self.skip(ftype)
             self.readFieldEnd()
         self.readStructEnd()
+        self._immutability_stack.pop()
         if is_immutable:
             return obj(**fields)
 

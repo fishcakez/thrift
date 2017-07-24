@@ -191,17 +191,19 @@ namespace detail {
   template <typename Impl>                                                                         \
   struct name##Scope {                                                                             \
     Impl* impl;                                                                                    \
+    bool immutable;                                                                                \
     bool valid;                                                                                    \
-    name##Scope(Impl* thiz) : impl(thiz), valid(impl->op##Begin()) {}                              \
+    name##Scope(Impl* thiz, bool immutable) : impl(thiz), immutable(immutable),                    \
+                                              valid(impl->op##Begin(immutable)) {}                 \
     ~name##Scope() {                                                                               \
       if (valid)                                                                                   \
-        impl->op##End();                                                                           \
+        impl->op##End(immutable);                                                                  \
     }                                                                                              \
     operator bool() { return valid; }                                                              \
   };                                                                                               \
   template <typename Impl, template <typename> class T>                                            \
-  name##Scope<Impl> op##Scope(T<Impl>* thiz) {                                                     \
-    return name##Scope<Impl>(static_cast<Impl*>(thiz));                                            \
+  name##Scope<Impl> op##Scope(T<Impl>* thiz, bool immutable) {                                     \
+    return name##Scope<Impl>(static_cast<Impl*>(thiz), immutable);                                 \
   }
 DECLARE_OP_SCOPE(WriteStruct, writeStruct)
 DECLARE_OP_SCOPE(ReadStruct, readStruct)
@@ -520,7 +522,8 @@ bool ProtocolBase<Impl>::encodeValue(PyObject* value, TType type, PyObject* type
       return false;
     }
 
-    detail::WriteStructScope<Impl> scope = detail::writeStructScope(this);
+    detail::WriteStructScope<Impl> scope = detail::writeStructScope(
+      this, parsedargs.immutable);
     if (!scope) {
       return false;
     }
@@ -618,7 +621,7 @@ bool ProtocolBase<Impl>::skip(TType type) {
   }
 
   case T_STRUCT: {
-    detail::ReadStructScope<Impl> scope = detail::readStructScope(this);
+    detail::ReadStructScope<Impl> scope = detail::readStructScope(this, false);
     if (!scope) {
       return false;
     }
@@ -739,8 +742,8 @@ PyObject* ProtocolBase<Impl>::decodeValue(TType type, PyObject* typeargs) {
       return NULL;
     }
 
-    bool use_tuple = type == T_LIST && parsedargs.immutable;
-    ScopedPyObject ret(use_tuple ? PyTuple_New(len) : PyList_New(len));
+    bool is_immutable = (parsedargs.immutable || impl()->inImmutableContext());
+    ScopedPyObject ret(is_immutable ? PyTuple_New(len) : PyList_New(len));
     if (!ret) {
       return NULL;
     }
@@ -750,7 +753,7 @@ PyObject* ProtocolBase<Impl>::decodeValue(TType type, PyObject* typeargs) {
       if (!item) {
         return NULL;
       }
-      if (use_tuple) {
+      if (is_immutable) {
         PyTuple_SET_ITEM(ret.get(), i, item);
       } else {
         PyList_SET_ITEM(ret.get(), i, item);
@@ -761,7 +764,7 @@ PyObject* ProtocolBase<Impl>::decodeValue(TType type, PyObject* typeargs) {
     //               for list and set, avoiding this post facto conversion.
     if (type == T_SET) {
       PyObject* setret;
-      setret = parsedargs.immutable ? PyFrozenSet_New(ret.get()) : PySet_New(ret.get());
+      setret = is_immutable ? PyFrozenSet_New(ret.get()) : PySet_New(ret.get());
       return setret;
     }
     return ret.release();
@@ -799,7 +802,8 @@ PyObject* ProtocolBase<Impl>::decodeValue(TType type, PyObject* typeargs) {
       }
     }
 
-    if (parsedargs.immutable) {
+    bool is_immutable = (parsedargs.immutable || impl()->inImmutableContext());
+    if (is_immutable) {
       if (!ThriftModule) {
         ThriftModule = PyImport_ImportModule("thrift.Thrift");
       }
@@ -825,7 +829,7 @@ PyObject* ProtocolBase<Impl>::decodeValue(TType type, PyObject* typeargs) {
     if (!parse_struct_args(&parsedargs, typeargs)) {
       return NULL;
     }
-    return readStruct(Py_None, parsedargs.klass, parsedargs.spec);
+    return readStruct(Py_None, parsedargs.klass, parsedargs.spec, parsedargs.immutable);
   }
 
   case T_STOP:
@@ -840,15 +844,16 @@ PyObject* ProtocolBase<Impl>::decodeValue(TType type, PyObject* typeargs) {
 }
 
 template <typename Impl>
-PyObject* ProtocolBase<Impl>::readStruct(PyObject* output, PyObject* klass, PyObject* spec_seq) {
+PyObject* ProtocolBase<Impl>::readStruct(PyObject* output, PyObject* klass, PyObject* spec_seq, bool immutable) {
   int spec_seq_len = PyTuple_Size(spec_seq);
-  bool immutable = output == Py_None;
   ScopedPyObject kwargs;
+  bool call_constructor = immutable || output == Py_None;
+
   if (spec_seq_len == -1) {
     return NULL;
   }
 
-  if (immutable) {
+  if (call_constructor) {
     kwargs.reset(PyDict_New());
     if (!kwargs) {
       PyErr_SetString(PyExc_TypeError, "failed to prepare kwargument storage");
@@ -856,7 +861,7 @@ PyObject* ProtocolBase<Impl>::readStruct(PyObject* output, PyObject* klass, PyOb
     }
   }
 
-  detail::ReadStructScope<Impl> scope = detail::readStructScope(this);
+  detail::ReadStructScope<Impl> scope = detail::readStructScope(this, immutable);
   if (!scope) {
     return NULL;
   }
@@ -889,6 +894,7 @@ PyObject* ProtocolBase<Impl>::readStruct(PyObject* output, PyObject* klass, PyOb
     if (!parse_struct_item_spec(&parsedspec, item_spec)) {
       return NULL;
     }
+
     if (parsedspec.type != type) {
       if (!skip(type)) {
         PyErr_Format(PyExc_TypeError, "struct field had wrong type: expected %d but got %d",
@@ -903,12 +909,12 @@ PyObject* ProtocolBase<Impl>::readStruct(PyObject* output, PyObject* klass, PyOb
       return NULL;
     }
 
-    if ((immutable && PyDict_SetItem(kwargs.get(), parsedspec.attrname, fieldval.get()) == -1)
-        || (!immutable && PyObject_SetAttr(output, parsedspec.attrname, fieldval.get()) == -1)) {
+    if ((call_constructor && PyDict_SetItem(kwargs.get(), parsedspec.attrname, fieldval.get()) == -1)
+        || (!call_constructor && PyObject_SetAttr(output, parsedspec.attrname, fieldval.get()) == -1)) {
       return NULL;
     }
   }
-  if (immutable) {
+  if (call_constructor) {
     ScopedPyObject args(PyTuple_New(0));
     if (!args) {
       PyErr_SetString(PyExc_TypeError, "failed to prepare argument storage");

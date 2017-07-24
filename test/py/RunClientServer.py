@@ -85,6 +85,8 @@ def setup_pypath(libdir, gendir):
     env['PYTHONPATH'] = os.pathsep.join(dirs)
     if gendir.endswith('gen-py-no_utf8strings'):
         env['THRIFT_TEST_PY_NO_UTF8STRINGS'] = '1'
+    if 'dynamic' in gendir:
+        env['THRIFT_TEST_PY_DYNAMIC'] = '1'
     return env
 
 
