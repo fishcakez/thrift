@@ -22,6 +22,7 @@
 
 #include "ext/types.h"
 #include <limits>
+#include <stack>
 #include <stdint.h>
 
 namespace apache {
@@ -40,7 +41,8 @@ public:
 
   bool prepareDecodeBufferFromTransport(PyObject* trans);
 
-  PyObject* readStruct(PyObject* output, PyObject* klass, PyObject* spec_seq);
+  PyObject* readStruct(PyObject* output, PyObject* klass, PyObject* spec_seq,
+                       bool immutable);
 
   bool prepareEncodeBuffer();
 
@@ -78,6 +80,9 @@ protected:
   inline bool checkLengthLimit(int32_t len, long limit);
 
   inline bool isUtf8(PyObject* typeargs);
+  inline bool inImmutableContext() { return immutabilityStack_.top(); }
+
+  std::stack<bool> immutabilityStack_;
 
 private:
   Impl* impl() { return static_cast<Impl*>(this); }

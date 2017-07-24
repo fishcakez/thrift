@@ -80,8 +80,8 @@ public:
     return true;
   }
 
-  bool writeStructBegin() { return true; }
-  bool writeStructEnd() { return true; }
+  bool writeStructBegin(bool immutable) { return true; }
+  bool writeStructEnd(bool immutable) { return true; }
   bool writeField(PyObject* value, const StructItemSpec& parsedspec) {
     writeByte(static_cast<uint8_t>(parsedspec.type));
     writeI16(parsedspec.tag);
@@ -180,8 +180,14 @@ public:
     return len;
   }
 
-  bool readStructBegin() { return true; }
-  bool readStructEnd() { return true; }
+  bool readStructBegin(bool immutable) {
+    immutabilityStack_.push(immutable);
+    return true;
+  }
+  bool readStructEnd(bool immutable) {
+    immutabilityStack_.pop();
+    return true;
+  }
 
   bool readFieldBegin(TType& type, int16_t& tag);
 

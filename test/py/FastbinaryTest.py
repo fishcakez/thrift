@@ -20,7 +20,7 @@
 #
 
 r"""
-PYTHONPATH=./gen-py:../../lib/py/build/lib... ./FastbinaryTest.py
+PYTHONPATH=./gen-py-dynamic:../../lib/py/build/lib... ./FastbinaryTest.py
 """
 
 # TODO(dreiss): Test error cases.  Check for memory leaks.
@@ -36,11 +36,15 @@ from copy import deepcopy
 from pprint import pprint
 
 from thrift.transport import TTransport
+from thrift.protocol.TBase import TFrozenBase
 from thrift.protocol.TBinaryProtocol import TBinaryProtocol, TBinaryProtocolAccelerated
 from thrift.protocol.TCompactProtocol import TCompactProtocol, TCompactProtocolAccelerated
+from thrift.Thrift import TFrozenDict
 
 from DebugProtoTest import Srv
-from DebugProtoTest.ttypes import Backwards, Bonk, Empty, HolyMoley, OneOfEach, RandomStuff, Wrapper
+from DebugProtoTest.ttypes import (Backwards, Bonk, Empty, HolyMoley,
+                                   ImmutableParent, OneOfEach, RandomStuff,
+                                   Wrapper)
 
 
 class TDevNullTransport(TTransport.TTransportBase):
@@ -119,6 +123,14 @@ rs.triple = 3.14
 rshuge = RandomStuff()
 rshuge.myintlist = list(range(10000))
 
+str_list = ("one", "two", "three")
+
+immutable = ImmutableParent(
+    str_list=str_list,
+    set_of_lists=frozenset((str_list,)),
+    map_of_lists=TFrozenDict([('foo', str_list)])
+)
+
 my_zero = Srv.Janky_result(**{"success": 5})
 
 
@@ -141,6 +153,14 @@ class Test(object):
             print("actual  : %s\nexpected: %s" % (repr(MINE), repr(ORIG)))
             raise Exception('write value mismatch')
 
+    def _read(self, thrift_cls, prot):
+        if issubclass(thrift_cls, TFrozenBase):
+            c = thrift_cls.read(prot)
+        else:
+            c = thrift_cls()
+            c.read(prot)
+        return c
+
     def _check_read(self, o):
         prot = self._slow(TTransport.TMemoryBuffer())
         o.write(prot)
@@ -149,8 +169,7 @@ class Test(object):
 
         prot = self._fast(
             TTransport.TMemoryBuffer(slow_version_binary), fallback=False)
-        c = o.__class__()
-        c.read(prot)
+        c = self._read(o.__class__, prot)
         if c != o:
             print("actual  : ")
             pprint(repr(c))
@@ -161,14 +180,14 @@ class Test(object):
         prot = self._fast(
             TTransport.TBufferedTransport(
                 TTransport.TMemoryBuffer(slow_version_binary)), fallback=False)
-        c = o.__class__()
-        c.read(prot)
+        c = self._read(o.__class__, prot)
         if c != o:
             print("actual  : ")
             pprint(repr(c))
             print("expected: ")
             pprint(repr(o))
             raise Exception('read value mismatch')
+        return c
 
     def _check_bad_unicode(self, o):
         if (sys.version_info[0] == 2 and
@@ -214,6 +233,12 @@ class Test(object):
 
         self._check_bad_unicode(ooe_bad)
 
+        if os.environ.get('THRIFT_TEST_PY_DYNAMIC'):
+            # Only py:dynamic works correctly with immutables.
+            self._check_write(immutable)
+            imm = self._check_read(immutable)
+            assert imm == immutable
+
         # One case where the serialized form changes, but only superficially.
         o = Backwards(**{"first_tag2": 4, "second_tag1": 2})
         trans_fast = TTransport.TMemoryBuffer()
@@ -231,8 +256,7 @@ class Test(object):
         o.write(prot)
         prot = self._slow(
             TTransport.TMemoryBuffer(prot.trans.getvalue()))
-        c = o.__class__()
-        c.read(prot)
+        c = self._read(o.__class__, prot)
         if c != o:
             print("copy: ")
             pprint(repr(c))

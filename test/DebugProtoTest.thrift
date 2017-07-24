@@ -82,6 +82,14 @@ struct Wrapper {
   python.immutable = "",
 )
 
+struct ImmutableParent {
+  1: list<string> str_list,
+  2: set<list<string>> set_of_lists,
+  3: map<string,list<string>> map_of_lists,
+} (
+  python.immutable = "",
+)
+
 struct RandomStuff {
   1: i32 a,
   2: i32 b,

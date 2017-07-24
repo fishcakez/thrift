@@ -34,6 +34,7 @@
 // Doing a benchmark shows that interning actually makes a difference, amazingly.
 
 /** Pointer to interned string to speed up attribute lookup. */
+PyObject* INTERN_STRING(TFrozenBase);
 PyObject* INTERN_STRING(TFrozenDict);
 PyObject* INTERN_STRING(cstringio_buf);
 PyObject* INTERN_STRING(cstringio_refill);
@@ -108,7 +109,7 @@ static PyObject* decode_impl(PyObject* args) {
     return NULL;
   }
 
-  return protocol.readStruct(output_obj, parsedargs.klass, parsedargs.spec);
+  return protocol.readStruct(output_obj, parsedargs.klass, parsedargs.spec, parsedargs.immutable);
 }
 }
 }
@@ -179,6 +180,7 @@ void initfastbinary() {
       INITERROR                                                                                    \
   } while (0)
 
+  INIT_INTERN_STRING(TFrozenBase);
   INIT_INTERN_STRING(TFrozenDict);
   INIT_INTERN_STRING(cstringio_buf);
   INIT_INTERN_STRING(cstringio_refill);

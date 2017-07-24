@@ -25,6 +25,7 @@ namespace thrift {
 namespace py {
 
 PyObject* ThriftModule = NULL;
+PyObject* TBaseModule = NULL;
 
 #if PY_MAJOR_VERSION < 3
 char refill_signature[] = {'s', '#', 'i'};
@@ -105,6 +106,20 @@ bool parse_struct_args(StructTypeArgs* dest, PyObject* typeargs) {
 
   dest->klass = PyList_GET_ITEM(typeargs, 0);
   dest->spec = PyList_GET_ITEM(typeargs, 1);
+
+  if (!TBaseModule) {
+    TBaseModule = PyImport_ImportModule("thrift.protocol.TBase");
+  }
+  if (!TBaseModule) {
+    return false;
+  }
+
+  ScopedPyObject cls(PyObject_GetAttr(TBaseModule, INTERN_STRING(TFrozenBase)));
+  if (!cls) {
+    return false;
+  }
+
+  dest->immutable = PyObject_IsSubclass(dest->klass, cls.get());
 
   return true;
 }
