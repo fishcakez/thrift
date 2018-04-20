@@ -41,7 +41,15 @@ class TApplicationException : public TException {
     INVALID_MESSAGE_TYPE = 2,
     WRONG_METHOD_NAME = 3,
     BAD_SEQUENCE_ID = 4,
-    MISSING_RESULT = 5
+    MISSING_RESULT = 5,
+    INTERNAL_ERROR = 6,
+    PROTOCOL_ERROR = 7,
+    INVALID_TRANSFORM = 8,
+    INVALID_PROTOCOL = 9,
+    UNSUPPORTED_CLIENT_TYPE = 10,
+    LOADSHEDDING = 11,
+    TIMEOUT = 12,
+    INJECTED_FAILURE = 13
   };
 
   TApplicationException() :
@@ -76,13 +84,21 @@ class TApplicationException : public TException {
   virtual const char* what() const throw() {
     if (message_.empty()) {
       switch (type_) {
-        case UNKNOWN              : return "TApplicationException: Unknown application exception";
-        case UNKNOWN_METHOD       : return "TApplicationException: Unknown method";
-        case INVALID_MESSAGE_TYPE : return "TApplicationException: Invalid message type";
-        case WRONG_METHOD_NAME    : return "TApplicationException: Wrong method name";
-        case BAD_SEQUENCE_ID      : return "TApplicationException: Bad sequence identifier";
-        case MISSING_RESULT       : return "TApplicationException: Missing result";
-        default                   : return "TApplicationException: (Invalid exception type)";
+        case UNKNOWN                 : return "TApplicationException: Unknown application exception";
+        case UNKNOWN_METHOD          : return "TApplicationException: Unknown method";
+        case INVALID_MESSAGE_TYPE    : return "TApplicationException: Invalid message type";
+        case WRONG_METHOD_NAME       : return "TApplicationException: Wrong method name";
+        case BAD_SEQUENCE_ID         : return "TApplicationException: Bad sequence identifier";
+        case MISSING_RESULT          : return "TApplicationException: Missing result";
+        case INTERNAL_ERROR          : return "TApplicationException: Internal error";
+        case PROTOCOL_ERROR          : return "TApplicationException: Protocol error";
+        case INVALID_TRANSFORM       : return "TApplicationException: Invalid transform";
+        case INVALID_PROTOCOL        : return "TApplicationException: Invalid protocol";
+        case UNSUPPORTED_CLIENT_TYPE : return "TApplicationException: Unsupported client type";
+        case LOADSHEDDING            : return "TApplicationException: Loadshedding";
+        case TIMEOUT                 : return "TApplicationException: Timeout";
+        case INJECTED_FAILURE        : return "TApplicationException: Injected failure";
+        default                      : return "TApplicationException: (Invalid exception type)";
       };
     } else {
       return message_.c_str();

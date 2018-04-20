@@ -292,6 +292,14 @@ struct
       | WRONG_METHOD_NAME
       | BAD_SEQUENCE_ID
       | MISSING_RESULT
+      | INTERNAL_ERROR
+      | PROTOCOL_ERROR
+      | INVALID_TRANSFORM
+      | INVALID_PROTOCOL
+      | UNSUPPORTED_CLIENT_TYPE
+      | LOADSHEDDING
+      | TIMEOUT
+      | INJECTED_FAILURE
 
   let typ_of_i = function
       0 -> UNKNOWN
@@ -300,6 +308,14 @@ struct
     | 3 -> WRONG_METHOD_NAME
     | 4 -> BAD_SEQUENCE_ID
     | 5 -> MISSING_RESULT
+    | 6 -> INTERNAL_ERROR
+    | 7 -> PROTOCOL_ERROR
+    | 8 -> INVALID_TRANSFORM
+    | 9 -> INVALID_PROTOCOL
+    | 10 -> UNSUPPORTED_CLIENT_TYPE
+    | 11 -> LOADSHEDDING
+    | 12 -> TIMEOUT
+    | 13 -> INJECTED_FAILURE
     | _ -> raise Thrift_error;;
   let typ_to_i = function
     | UNKNOWN -> 0
@@ -308,6 +324,14 @@ struct
     | WRONG_METHOD_NAME -> 3
     | BAD_SEQUENCE_ID -> 4
     | MISSING_RESULT -> 5
+    | INTERNAL_ERROR -> 6
+    | PROTOCOL_ERROR -> 7
+    | INVALID_TRANSFORM -> 8
+    | INVALID_PROTOCOL -> 9
+    | UNSUPPORTED_CLIENT_TYPE -> 10
+    | LOADSHEDDING -> 11
+    | TIMEOUT -> 12
+    | INJECTED_FAILURE -> 13
 
   class t =
   object (self)

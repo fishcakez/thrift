@@ -129,7 +129,15 @@ namespace Thrift
 			InvalidMessageType,
 			WrongMethodName,
 			BadSequenceID,
-			MissingResult
+			MissingResult,
+			InternalError,
+			ProtocolError,
+			InvalidTransform,
+			InvalidProtocol,
+			UnsupportedClientType,
+			Loadshedding,
+			Timeout,
+			InjectedFailure
 		}
 	}
 }
